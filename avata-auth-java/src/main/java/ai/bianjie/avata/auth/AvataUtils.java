@@ -1,82 +1,91 @@
 package ai.bianjie.avata.auth;
-
-
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
-
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
-
 public class AvataUtils {
-
     /**
      * 对请求参数进行签名处理
-     *
-     * @param path      请求路径，仅截取域名后及 Query 参数前部分，例："/v1beta1/accounts";
-     * @param query     Query 参数，例："key1=value1&key2=value2"，需转为 Map 格式
-     * @param body      Body 参数，例："{\"count\": 1, \"operation_id\": \"random_string\"}"，需转为 Map 格式
-     * @param timestamp 当前时间戳（毫秒），例：1647751123703
-     * @param apiSecret 应用方的 API Secret，例："AKIDz8krbsJ5yKBZQpn74WFkmLPc5ab"
-     * @return 返回签名结果
+     * @param path
+     * 请求路径,仅截取域名后参数前部分,例:"/v1beta1/accounts";
+     * @param query
+     * get请求携带的参数,例:"name1=value1&name2=value2",需要处理成map形式
+     * @param body
+     * post请求携带的参数,例:"{\"count\": 1, \"operation_id\": \"string\"}",需要处理成map形式
+     * @param apiSecret
+     * 应用方的api_secret,例:"AKIDz8krbsJ5yKBZQpn74WFkmLPc5ab"
+     * @return
+     * 返回时间戳和signature
      */
-    public static String signRequest(String path, Map<String, Object> query, Map<String, Object> body, long timestamp, String apiSecret) {
+    public static Map<String, String> SignRequest(String path, Map<String, String> query, Map<String, Object> body, String apiSecret) {
         Map<String, Object> paramsMap = new HashMap();
-
         paramsMap.put("path_url", path);
-
-        if (query != null && !query.isEmpty()) {
-            query.forEach((key, value) -> paramsMap.put("query_" + key, value));
+        if (null != query && query.size() != 0) {
+            for (Map.Entry<String, String> q : query.entrySet()) {
+                paramsMap.put("query_" + q.getKey(), q.getValue());
+            }
         }
-
-        if (body != null && !body.isEmpty()) {
-            body.forEach((key, value) -> paramsMap.put("body_" + key, value));
+        if (null != body && body.size() != 0) {
+            for (Map.Entry<String, Object> b : body.entrySet()) {
+                paramsMap.put("body_" + b.getKey(), b.getValue());
+            }
         }
-
-        // 将请求参数序列化为排序后的 JSON 字符串
-        String jsonStr = JSON.toJSONString(paramsMap, SerializerFeature.MapSortField);
-
-        // 执行签名
-        String signature = sha256Sum(jsonStr + String.valueOf(timestamp) + apiSecret);
-
-        return signature;
+        String json = JSON.toJSONString(paramsMap, SerializerFeature.MapSortField);
+        String timestamp = getTimestamp();
+        String signature = getSHA256StrJava(json + timestamp + apiSecret);
+        return new HashMap<String, String>() {
+            {
+                put("signature", signature);
+                put("timestamp", timestamp);
+            }
+        };
     }
-
+    public static String getTimestamp() {
+        //获取当前时间戳(毫秒级)
+        long l = System.currentTimeMillis();
+        String timeStamp = String.valueOf(l);
+        return timeStamp;
+    }
     /**
-     * SHA256 摘要
+     * 利用java原生的摘要实现SHA256加密
      *
-     * @param str
+     * @param str 加密后的报文
      * @return
      */
-    private static String sha256Sum(String str) {
-        MessageDigest digest = null;
+    public static String getSHA256StrJava(String str) {
+        MessageDigest messageDigest;
+        String encodeStr = "";
         try {
-            digest = MessageDigest.getInstance("SHA-256");
+            messageDigest = MessageDigest.getInstance("SHA-256");
+            messageDigest.update(str.getBytes("UTF-8"));
+            encodeStr = byte2Hex(messageDigest.digest());
         } catch (NoSuchAlgorithmException e) {
-            // Should not happen
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        byte[] encodedHash = digest.digest(str.getBytes(StandardCharsets.UTF_8));
-        return bytesToHex(encodedHash);
+        return encodeStr;
     }
-
     /**
-     * 将 bytes 转为 Hex
+     * 将byte转为16进制
      *
-     * @param hash
+     * @param bytes
      * @return
      */
-    private static String bytesToHex(byte[] hash) {
-        StringBuilder hexString = new StringBuilder(2 * hash.length);
-        for (int i = 0; i < hash.length; i++) {
-            String hex = Integer.toHexString(0xff & hash[i]);
-            if (hex.length() == 1) {
-                hexString.append('0');
+    public static String byte2Hex(byte[] bytes) {
+        StringBuffer stringBuffer = new StringBuffer();
+        String temp = null;
+        for (int i = 0; i < bytes.length; i++) {
+            temp = Integer.toHexString(bytes[i] & 0xFF);
+            if (temp.length() == 1) {
+                //1得到一位的进行补0操作
+                stringBuffer.append("0");
             }
-            hexString.append(hex);
+            stringBuffer.append(temp);
         }
-        return hexString.toString();
+        return stringBuffer.toString();
     }
 }
