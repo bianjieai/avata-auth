@@ -188,7 +188,6 @@ function SignRequest(path, query, body, apiSecret) {
     });
   }
   var timestamp = Date.parse(new Date())
-  console.log(timestamp)
   //使用SHA256(Params+Timestamp+ApiSecret)生成signature
   var hexHash
   if (params) {
@@ -197,11 +196,13 @@ function SignRequest(path, query, body, apiSecret) {
       obj[k] = v;
     }
     const sortParamsBytes = JSON.stringify(obj, Object.keys(obj).sort());
-    console.log(sortParamsBytes);
     const str = sortParamsBytes + timestamp + apiSecret;
     hexHash = SHA256_hash(str);
   }
-  return hexHash
+  var resMap = new Map();
+  resMap.set("signature",hexHash);
+  resMap.set("timestamp",timestamp);
+  return resMap
 }
 
 /******************************************************************************/

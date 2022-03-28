@@ -10,16 +10,19 @@
 <body>
 <script>
 
+    //请求参数
     var path = "/v1beta1/accounts"
     var apiSecret = "AKIDz8krbsJ5yKBZQpn74WFkmLPx3gn"
 
-    // const testGet = SignRequest(path, {
+    //测试get请求
+    // var testGet = SignRequest(path, {
     //     "name1": "value1",
     //     "name2": "value2"
     // }, null, apiSecret)
     // console.log("test get : ",testGet)
 
-    const testPost = SignRequest(path, null, {
+    //测试post请求
+    var testPost = SignRequest(path, null, {
         "count": 1,
         "operation_id": "string"
     }, apiSecret)
